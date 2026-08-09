@@ -527,7 +527,7 @@ const TeamSection = ({ accentColor, accentGreen }) => {
   const sectionRef = React.useRef(null);
 
   const team = [
-    { name:'Amara Kibe',      role:'Founder & CEO',     spec:'Vision & Strategy',    init:'AK', color: accentColor },
+    { name:'Alvin Mugambi',   role:'CEO & Founder',     spec:'Vision & Strategy',    init:'AM', color: accentColor },
     { name:'Njoroge Mwangi',  role:'Chief Technology Officer', spec:'Systems Architecture', init:'NM', color: accentGreen },
     { name:'Wanjiru Ndegwa',  role:'Head of Design',    spec:'Product & UX',         init:'WN', color: accentColor },
     { name:'Kamau Githinji',  role:'Lead Engineer',     spec:'Full-Stack & AI',      init:'KG', color: accentGreen },
@@ -703,11 +703,28 @@ const TestimonialsSection = ({ accentColor, accentGreen }) => {
 const ContactSection = ({ accentColor, accentGreen }) => {
   const [form, setForm] = React.useState({ name:'', email:'', service:'', message:'' });
   const [sent, setSent] = React.useState(false);
+  const [error, setError] = React.useState(false);
   const services = ['Software Development','Web & App Design','Data & Analytics','AI / Machine Learning','Cloud & Infrastructure','Cybersecurity','Consulting & Strategy'];
 
   const inputStyle = { width:'100%', background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:4, padding:'14px 16px', color:'var(--text)', fontFamily:'var(--ff-body)', fontSize:14, outline:'none', transition:'border-color 0.2s' };
 
-  const handleSubmit = (e) => { e.preventDefault(); setSent(true); };
+  // Netlify Forms: a plain POST to "/" with the same fields it detected in
+  // this form at deploy time is what routes submissions to the notification
+  // email configured in the Netlify dashboard.
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(false);
+    try {
+      await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ 'form-name': 'contact', ...form }).toString(),
+      });
+      setSent(true);
+    } catch (err) {
+      setError(true);
+    }
+  };
 
   return (
     <section id="contact" data-screen-label="Contact" style={{ padding:'120px clamp(24px,5vw,80px)', borderTop:'1px solid var(--border)', background:'var(--bg-1)' }}>
@@ -722,7 +739,7 @@ const ContactSection = ({ accentColor, accentGreen }) => {
             Whether you have a clear brief or just an idea, we'd love to hear from you. We'll get back within 24 hours.
           </p>
           <div className="reveal reveal-delay-3" style={{ display:'flex', flexDirection:'column', gap:16 }}>
-            {[['✉','hello@mwarubaini.co'],['📍','Nairobi, Kenya'],['⏱','Response within 24h']].map(([icon,val]) => (
+            {[['📍','Nairobi, Kenya'],['⏱','Response within 24h']].map(([icon,val]) => (
               <div key={val} style={{ display:'flex', alignItems:'center', gap:14 }}>
                 <div style={{ width:40, height:40, borderRadius:'50%', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>{icon}</div>
                 <span style={{ fontSize:14, color:'var(--text-dim)' }}>{val}</span>
@@ -740,26 +757,32 @@ const ContactSection = ({ accentColor, accentGreen }) => {
               <button onClick={()=>setSent(false)} style={{ marginTop:24, color:accentColor, fontFamily:'var(--ff-display)', fontWeight:600, fontSize:12, letterSpacing:'0.1em', cursor:'pointer', background:'none', border:'none' }}>SEND ANOTHER →</button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+            <form name="contact" data-netlify="true" data-netlify-honeypot="bot-field"
+              onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              <input type="hidden" name="form-name" value="contact" />
+              <input type="text" name="bot-field" style={{ display:'none' }} tabIndex={-1} autoComplete="off" />
               {[['name','Your name','text'],['email','Your email','email']].map(([key,ph,type]) => (
-                <input key={key} type={type} placeholder={ph} required value={form[key]}
+                <input key={key} name={key} type={type} placeholder={ph} required value={form[key]}
                   onChange={e=>setForm(f=>({...f,[key]:e.target.value}))}
                   onFocus={e=>e.target.style.borderColor=accentColor}
                   onBlur={e=>e.target.style.borderColor='var(--border)'}
                   style={inputStyle}/>
               ))}
-              <select value={form.service} onChange={e=>setForm(f=>({...f,service:e.target.value}))}
+              <select name="service" value={form.service} onChange={e=>setForm(f=>({...f,service:e.target.value}))}
                 onFocus={e=>e.target.style.borderColor=accentColor}
                 onBlur={e=>e.target.style.borderColor='var(--border)'}
                 style={{...inputStyle, color: form.service ? 'var(--text)' : 'var(--text-muted)'}}>
                 <option value="" style={{background:'var(--bg-2)'}}>Select a service</option>
                 {services.map(s=><option key={s} value={s} style={{background:'var(--bg-2)'}}>{s}</option>)}
               </select>
-              <textarea placeholder="Tell us about your project" required value={form.message}
+              <textarea name="message" placeholder="Tell us about your project" required value={form.message}
                 onChange={e=>setForm(f=>({...f,message:e.target.value}))}
                 onFocus={e=>e.target.style.borderColor=accentColor}
                 onBlur={e=>e.target.style.borderColor='var(--border)'}
                 rows={5} style={{...inputStyle, resize:'vertical'}}/>
+              {error && (
+                <p style={{ fontSize:13, color:'#f87171' }}>Something went wrong sending your message — please try again.</p>
+              )}
               <button type="submit" style={{ padding:'16px', background:accentColor, color:'#050810', fontFamily:'var(--ff-display)', fontWeight:700, fontSize:13, letterSpacing:'0.12em', borderRadius:4, transition:'opacity 0.2s' }}
                 onMouseEnter={e=>e.target.style.opacity='0.85'}
                 onMouseLeave={e=>e.target.style.opacity='1'}>
