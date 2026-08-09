@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mwarubaini Solutions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050810;
+      --bg-1: #080d1a;
+      --bg-2: #0d1528;
+      --border: rgba(255,255,255,0.07);
+      --text: #dde4f0;
+      --text-muted: #4e5e7a;
+      --text-dim: #8a99b8;
+      --cyan: oklch(68% 0.18 196);
+      --green: oklch(68% 0.18 155);
+      --cyan-dim: oklch(40% 0.12 196);
+      --green-dim: oklch(40% 0.12 155);
+      --ff-display: 'Syne', sans-serif;
+      --ff-body: 'DM Sans', sans-serif;
+      --nav-h: 72px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ff-body);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px;
+    }
+
+    @keyframes leafPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    @keyframes floatUp {
+      0% { opacity: 0.5; transform: translateY(0) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(-80px) rotate(15deg); }
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Scroll reveal */
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+    .reveal-delay-5 { transition-delay: 0.5s; }
+    .reveal-delay-6 { transition-delay: 0.6s; }
+
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+    #root { min-height: 100vh; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/matter-js@0.19.0/build/matter.min.js"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="components.jsx"></script>
+  <script type="text/babel" src="tree-section.jsx"></script>
+  <script type="text/babel" src="physics-hero.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+  /* ── Plain JS Matter.js physics — completely outside React ── */
+  var physicsStarted = false;
+  function startPhysics() {
+    var canvas = document.getElementById('physics-hero-canvas');
+    if (!canvas || !window.Matter) {
+      setTimeout(startPhysics, 100);
+      return;
+    }
+    if (physicsStarted) return;
+    physicsStarted = true;
+    var accentColor = canvas.dataset.cyan  || '#22d3ee';
+    var accentGreen = canvas.dataset.green || '#4ade80';
+
+    var M = window.Matter;
+    var Engine = M.Engine, Bodies = M.Bodies, Body = M.Body, World = M.World;
+
+    var W = window.innerWidth;
+    var H = window.innerHeight;
+    canvas.width  = W;
+    canvas.height = H;
+
+    var engine = Engine.create({ gravity: { x: 0, y: 0.22 } });
+    var world  = engine.world;
+    var ctx    = canvas.getContext('2d');
+
+    var solutions = [
+      'Software Dev', 'Web & App', 'Data & Analytics',
+      'AI & ML', 'Cloud & Infra', 'Cybersecurity', 'Consulting'
+    ];
+    var palette = [accentColor, accentGreen];
+
+    var wo = { isStatic: true };
+    World.add(world, [
+      Bodies.rectangle(W/2, H+30,  W*2, 60, wo),
+      Bodies.rectangle(W/2, -30,   W*2, 60, wo),
+      Bodies.rectangle(-30,  H/2,  60, H*2, wo),
+      Bodies.rectangle(W+30, H/2,  60, H*2, wo),
+    ]);
+
+    var leaves = solutions.map(function(label, i) {
+      var r = 52 + Math.random() * 24;
+      var b = Bodies.circle(
+        100 + Math.random() * (W - 200),
+        -60 - i * 120, r,
+        { restitution:0.5, friction:0.01, frictionAir:0.009,
+          density:0.0012, label: label,
+          plugin:{ color: palette[i % 2], r: r } }
+      );
+      Body.setVelocity(b, { x:(Math.random()-0.5)*3, y:Math.random()*2+0.5 });
+      return b;
+    });
+    World.add(world, leaves);
+
+    var mouse = { x: -9999, y: -9999 };
+    canvas.addEventListener('mousemove', function(e) {
+      var rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    });
+    canvas.addEventListener('mouseleave', function() {
+      mouse.x = -9999; mouse.y = -9999;
+    });
+
+    function draw() {
+      requestAnimationFrame(draw);
+      // Re-fetch live canvas each frame in case React replaced the element
+      var liveCanvas = document.getElementById('physics-hero-canvas');
+      if (liveCanvas && liveCanvas !== canvas) {
+        canvas = liveCanvas;
+        canvas.width = W; canvas.height = H;
+        ctx = canvas.getContext('2d');
+      }
+      if (!ctx) return;
+      Engine.update(engine, 1000/60);
+
+      for (var i = 0; i < leaves.length; i++) {
+        var b = leaves[i];
+        var dx = b.position.x - mouse.x;
+        var dy = b.position.y - mouse.y;
+        var d  = Math.sqrt(dx*dx + dy*dy);
+        if (d < 130 && d > 0.1) {
+          var s = ((130-d)/130) * 0.007;
+          Body.applyForce(b, b.position, { x:(dx/d)*s, y:(dy/d)*s });
+        }
+      }
+
+      ctx.clearRect(0, 0, W, H);
+
+      for (var j = 0; j < leaves.length; j++) {
+        var leaf = leaves[j];
+        var x = leaf.position.x, y = leaf.position.y;
+        var col = leaf.plugin.color;
+        var r   = leaf.plugin.r;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(leaf.angle);
+
+        var g = ctx.createRadialGradient(0,0,r*0.2, 0,0,r*1.4);
+        g.addColorStop(0, col+'28'); g.addColorStop(1, col+'00');
+        ctx.beginPath(); ctx.arc(0,0,r*1.4,0,Math.PI*2);
+        ctx.fillStyle=g; ctx.fill();
+
+        ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+        ctx.fillStyle=col+'18'; ctx.fill();
+        ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
+
+        ctx.beginPath(); ctx.arc(0,0,r*0.52,0,Math.PI*2);
+        ctx.strokeStyle=col+'30'; ctx.lineWidth=0.8; ctx.stroke();
+
+        ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2);
+        ctx.fillStyle=col+'cc'; ctx.fill();
+
+        var fs = Math.round(r * 0.21);
+        ctx.fillStyle=col;
+        ctx.font='700 '+fs+"px 'Syne', sans-serif";
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        var words = leaf.label.split(' ');
+        var lh = fs * 1.3;
+        if (words.length === 1) {
+          ctx.fillText(words[0], 0, 0);
+        } else {
+          var mid = Math.ceil(words.length/2);
+          ctx.fillText(words.slice(0,mid).join(' '), 0, -lh*0.5);
+          ctx.fillText(words.slice(mid).join(' '),   0,  lh*0.5);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  // Wait for React to mount the canvas, then start physics
+  setTimeout(startPhysics, 500);
+  </script>
+</body>
+</html>
