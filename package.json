@@ -1,0 +1,15 @@
+{
+  "name": "mwarubainisite",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Build tooling for Mwarubaini Solutions site. Source files (index.html, *.jsx) stay as-is for live editing; `npm run build` produces a pre-rendered, precompiled production copy in dist/.",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-react": "^7.28.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

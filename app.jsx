@@ -41,4 +41,11 @@ const App = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+if (typeof document !== 'undefined') {
+  const rootEl = document.getElementById('root');
+  if (rootEl && rootEl.hasChildNodes()) {
+    ReactDOM.hydrateRoot(rootEl, <App />);
+  } else {
+    ReactDOM.createRoot(rootEl).render(<App />);
+  }
+}

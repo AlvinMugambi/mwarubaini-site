@@ -141,11 +141,13 @@ const HeroSection = ({ accentColor, accentGreen, headline }) => {
           <span style={{ fontFamily:'var(--ff-body)', fontSize:12, letterSpacing:'0.18em', color:accentColor, textTransform:'uppercase' }}>Technology rooted in purpose</span>
         </div>
 
-        <h1 className="reveal reveal-delay-1" style={{ fontFamily:'var(--ff-display)', fontWeight:800, fontSize:'clamp(48px, 9vw, 128px)', lineHeight:0.95, letterSpacing:'-0.02em', color:'var(--text)', marginBottom:8 }}>
-          Built for
-        </h1>
-        <h1 className="reveal reveal-delay-2" style={{ fontFamily:'var(--ff-display)', fontWeight:800, fontSize:'clamp(48px, 9vw, 128px)', lineHeight:0.95, letterSpacing:'-0.02em', marginBottom:40 }}>
-          <span style={{ WebkitTextStroke:`1px ${accentColor}`, color:'transparent' }}>the future.</span>
+        <h1 style={{ fontFamily:'var(--ff-display)', fontWeight:800, fontSize:'clamp(48px, 9vw, 128px)', lineHeight:0.95, letterSpacing:'-0.02em' }}>
+          <span className="reveal reveal-delay-1" style={{ display:'block', color:'var(--text)', marginBottom:8 }}>
+            Built for
+          </span>
+          <span className="reveal reveal-delay-2" style={{ display:'block', WebkitTextStroke:`1px ${accentColor}`, color:'transparent', marginBottom:40 }}>
+            the future.
+          </span>
         </h1>
 
         <p className="reveal reveal-delay-3" style={{ fontFamily:'var(--ff-body)', fontSize:'clamp(15px,2vw,18px)', color:'var(--text-dim)', maxWidth:520, lineHeight:1.7, marginBottom:48 }}>
@@ -479,7 +481,7 @@ const PortfolioSection = ({ accentColor, accentGreen }) => {
                       boxShadow: isActive ? `0 0 32px ${w.color}55, 0 0 64px ${w.color}22` : 'none',
                       transition:'transform 0.9s cubic-bezier(0.4,0,0.2,1), width 0.5s ease, height 0.5s ease, border-color 0.4s, box-shadow 0.4s',
                     }}>
-                      <img src={w.img} alt={w.title} style={{ width:'100%', height:'100%', objectFit:'cover',
+                      <img src={w.img} alt={`${w.title} — ${w.tag} project by Mwarubaini Solutions`} loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover',
                         filter: isActive ? 'none' : 'grayscale(0.75) brightness(0.3)',
                         transition:'filter 0.5s, transform 0.5s',
                         transform: isActive ? 'scale(1)' : 'scale(1.1)',
