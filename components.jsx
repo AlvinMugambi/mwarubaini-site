@@ -17,6 +17,19 @@ const useCountUp = (target, duration = 1800, active = false) => {
   return val;
 };
 
+// SSR-safe: starts at a desktop default so server and first client render
+// match, then corrects to the real width once mounted in the browser.
+const useViewportWidth = () => {
+  const [w, setW] = React.useState(1200);
+  React.useEffect(() => {
+    const fn = () => setW(window.innerWidth);
+    fn();
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+  return w;
+};
+
 const useReveal = () => {
   React.useEffect(() => {
     const els = document.querySelectorAll('.reveal');
@@ -42,6 +55,8 @@ const LogoMark = ({ size = 28, cyan = '#22d3ee', green = '#4ade80' }) => (
 const NavSection = ({ accentColor, accentGreen = '#4ade80' }) => {
   const [scrolled, setScrolled] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const vw = useViewportWidth();
+  const isMobile = vw < 860;
   const links = ['Services','About','Work','Team','Contact'];
 
   React.useEffect(() => {
@@ -50,44 +65,97 @@ const NavSection = ({ accentColor, accentGreen = '#4ade80' }) => {
     return () => window.removeEventListener('scroll', fn);
   }, []);
 
+  React.useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
+  React.useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [menuOpen]);
+
   const navStyle = {
     position: 'fixed', top: 0, left: 0, right: 0, zIndex: 900,
     height: 'var(--nav-h)',
     display: 'flex', alignItems: 'center',
     padding: '0 clamp(24px, 5vw, 80px)',
-    background: scrolled ? 'rgba(5,8,16,0.92)' : 'transparent',
-    backdropFilter: scrolled ? 'blur(12px)' : 'none',
-    borderBottom: scrolled ? '1px solid var(--border)' : '1px solid transparent',
+    background: (scrolled || menuOpen) ? 'rgba(5,8,16,0.92)' : 'transparent',
+    backdropFilter: (scrolled || menuOpen) ? 'blur(12px)' : 'none',
+    borderBottom: (scrolled || menuOpen) ? '1px solid var(--border)' : '1px solid transparent',
     transition: 'all 0.4s ease',
     justifyContent: 'space-between',
   };
 
+  const barStyle = { width:22, height:2, background:'var(--text)', transition:'transform 0.25s ease, opacity 0.2s ease' };
+
   return (
+    <>
     <nav style={navStyle}>
-      <a href="#hero" style={{ display:'flex', alignItems:'center', gap:10, fontFamily:'var(--ff-display)', fontWeight:700, fontSize:15, letterSpacing:'0.08em', color:'var(--text)' }}>
+      <a href="#hero" onClick={() => setMenuOpen(false)} style={{ display:'flex', alignItems:'center', gap:10, fontFamily:'var(--ff-display)', fontWeight:700, fontSize:15, letterSpacing:'0.08em', color:'var(--text)' }}>
         <LogoMark size={26} cyan={accentColor} green={accentGreen}/>
         <span>MWARUBAINI</span>
-        <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:12 }}>SOLUTIONS</span>
+        {!isMobile && <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:12 }}>SOLUTIONS</span>}
       </a>
-      <div style={{ display:'flex', alignItems:'center', gap:32 }}>
-        {links.map(l => (
-          <a key={l} href={`#${l.toLowerCase()}`} style={{ fontFamily:'var(--ff-body)', fontSize:13, letterSpacing:'0.06em', color:'var(--text-dim)', transition:'color 0.2s' }}
-            onMouseEnter={e => e.target.style.color = accentColor}
-            onMouseLeave={e => e.target.style.color = 'var(--text-dim)'}
-          >{l}</a>
-        ))}
-        <a href="#contact" style={{ padding:'8px 20px', background: accentColor, color:'#050810', fontFamily:'var(--ff-display)', fontWeight:700, fontSize:12, letterSpacing:'0.1em', borderRadius:4, transition:'opacity 0.2s' }}
-          onMouseEnter={e => e.target.style.opacity='0.85'}
-          onMouseLeave={e => e.target.style.opacity='1'}
-        >GET IN TOUCH</a>
-      </div>
+
+      {isMobile ? (
+        <button
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(o => !o)}
+          style={{ display:'flex', flexDirection:'column', gap:5, padding:8, zIndex:901 }}
+        >
+          <span style={{ ...barStyle, transform: menuOpen ? 'translateY(7px) rotate(45deg)' : 'none' }}/>
+          <span style={{ ...barStyle, opacity: menuOpen ? 0 : 1 }}/>
+          <span style={{ ...barStyle, transform: menuOpen ? 'translateY(-7px) rotate(-45deg)' : 'none' }}/>
+        </button>
+      ) : (
+        <div style={{ display:'flex', alignItems:'center', gap:32 }}>
+          {links.map(l => (
+            <a key={l} href={`#${l.toLowerCase()}`} style={{ fontFamily:'var(--ff-body)', fontSize:13, letterSpacing:'0.06em', color:'var(--text-dim)', transition:'color 0.2s' }}
+              onMouseEnter={e => e.target.style.color = accentColor}
+              onMouseLeave={e => e.target.style.color = 'var(--text-dim)'}
+            >{l}</a>
+          ))}
+          <a href="#contact" style={{ padding:'8px 20px', background: accentColor, color:'#050810', fontFamily:'var(--ff-display)', fontWeight:700, fontSize:12, letterSpacing:'0.1em', borderRadius:4, transition:'opacity 0.2s' }}
+            onMouseEnter={e => e.target.style.opacity='0.85'}
+            onMouseLeave={e => e.target.style.opacity='1'}
+          >GET IN TOUCH</a>
+        </div>
+      )}
     </nav>
+
+    {/* Mobile menu overlay — kept OUTSIDE <nav> deliberately: <nav> is
+        position:fixed with a fixed 72px height, so a fixed-position child
+        of it would take <nav> itself as its containing block and collapse
+        to 0 height instead of covering the viewport. */}
+    {isMobile && (
+      <div style={{
+        position:'fixed', top:'var(--nav-h)', left:0, right:0, bottom:0,
+        background:'rgba(5,8,16,0.97)', backdropFilter:'blur(16px)',
+        zIndex:899, display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center', gap:28,
+        opacity: menuOpen ? 1 : 0,
+        pointerEvents: menuOpen ? 'auto' : 'none',
+        transition:'opacity 0.3s ease',
+      }}>
+        {links.map(l => (
+          <a key={l} href={`#${l.toLowerCase()}`} onClick={() => setMenuOpen(false)}
+            style={{ fontFamily:'var(--ff-display)', fontWeight:700, fontSize:22, color:'var(--text-dim)', letterSpacing:'0.04em' }}>
+            {l}
+          </a>
+        ))}
+        <a href="#contact" onClick={() => setMenuOpen(false)}
+          style={{ marginTop:12, padding:'14px 36px', background:accentColor, color:'#050810', fontFamily:'var(--ff-display)', fontWeight:700, fontSize:13, letterSpacing:'0.1em', borderRadius:4 }}>
+          GET IN TOUCH
+        </a>
+      </div>
+    )}
+    </>
   );
 };
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 const HeroSection = ({ accentColor, accentGreen, headline }) => {
   useReveal();
+  const vw = useViewportWidth();
+  const isNarrow = vw < 640;
   const [bgOffset, setBgOffset] = React.useState(0);
   const [statsVisible, setStatsVisible] = React.useState(false);
   const statsRef = React.useRef(null);
@@ -166,9 +234,9 @@ const HeroSection = ({ accentColor, accentGreen, headline }) => {
         </div>
 
         {/* Stats bar */}
-        <div ref={statsRef} className="reveal reveal-delay-5" style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:1, borderTop:'1px solid var(--border)', paddingTop:32 }}>
+        <div ref={statsRef} className="reveal reveal-delay-5" style={{ display:'grid', gridTemplateColumns: isNarrow ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isNarrow ? '28px 16px' : 1, borderTop:'1px solid var(--border)', paddingTop:32 }}>
           {stats.map((s, i) => (
-            <div key={i} style={{ paddingRight:32 }}>
+            <div key={i} style={{ paddingRight: isNarrow ? 0 : 32 }}>
               <div style={{ fontFamily:'var(--ff-display)', fontWeight:800, fontSize:'clamp(28px,4vw,44px)', color: i===0 ? accentColor : 'var(--text)', letterSpacing:'-0.02em' }}>
                 {s.static ? s.n : s.n}{s.suffix}
               </div>
@@ -305,9 +373,12 @@ const ServicesSection = ({ accentColor, accentGreen }) => {
 };
 
 // ─── About ────────────────────────────────────────────────────────────────────
-const AboutSection = ({ accentColor, accentGreen }) => (
+const AboutSection = ({ accentColor, accentGreen }) => {
+  const vw = useViewportWidth();
+  const stacked = vw < 900;
+  return (
   <section id="about" data-screen-label="About" style={{ padding:'120px clamp(24px,5vw,80px)', borderTop:'1px solid var(--border)', background:'var(--bg-1)' }}>
-    <div style={{ maxWidth:1200, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr', gap:80, alignItems:'start' }}>
+    <div style={{ maxWidth:1200, margin:'0 auto', display:'grid', gridTemplateColumns: stacked ? '1fr' : '1fr 1fr', gap: stacked ? 48 : 80, alignItems:'start' }}>
       <div>
         <div className="reveal" style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
           <div style={{ width:24, height:1, background:accentGreen }}/>
@@ -348,13 +419,16 @@ const AboutSection = ({ accentColor, accentGreen }) => (
       </div>
     </div>
   </section>
-);
+  );
+};
 
 // ─── Portfolio (Spinning Wheel) ───────────────────────────────────────────────
 const PortfolioSection = ({ accentColor, accentGreen }) => {
   const [active, setActive] = React.useState(0);
   const [prev, setPrev] = React.useState(0);
   const sectionRef = React.useRef(null);
+  const vw = useViewportWidth();
+  const stacked = vw < 860;
 
   const works = [
     { tag:'FinTech', title:'NexaBank Core Platform', desc:'Full-stack digital banking platform with real-time transaction processing and fraud detection for a Nairobi-based financial institution.', year:'2024', color: accentColor, img:'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80' },
@@ -364,8 +438,8 @@ const PortfolioSection = ({ accentColor, accentGreen }) => {
   ];
 
   const N = works.length;
-  const R = 220;   // orbit radius
-  const W = 540;   // wheel container size
+  const W = stacked ? Math.max(220, Math.min(340, vw - 80)) : 540;   // wheel container size
+  const R = W * (220 / 540);   // orbit radius, proportional to W
 
   // Item base positions in wheel container (right, bottom, left, top)
   const itemPos = [
@@ -396,7 +470,7 @@ const PortfolioSection = ({ accentColor, accentGreen }) => {
   return (
     <section ref={sectionRef} id="work" data-screen-label="Portfolio"
       style={{ height: `${(N + 1) * 100}vh`, position: 'relative' }}>
-      <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden', display: 'flex', alignItems: 'center', borderTop: '1px solid var(--border)' }}>
+      <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: stacked ? 'column' : 'row', alignItems: 'center', justifyContent: stacked ? 'center' : undefined, borderTop: '1px solid var(--border)' }}>
 
         {/* Ambient glow that follows active color */}
         <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 72% 50%, ${aw.color}0e 0%, transparent 65%)`, transition: 'background 0.9s', pointerEvents: 'none' }}/>
@@ -408,7 +482,7 @@ const PortfolioSection = ({ accentColor, accentGreen }) => {
         </div>
 
         {/* ── LEFT: content ── */}
-        <div style={{ flex: '0 0 44%', padding: '0 clamp(24px,5vw,80px)', position: 'relative', zIndex: 2, height: '100%', display: 'flex', alignItems: 'center' }}>
+        <div style={{ flex: stacked ? '0 0 auto' : '0 0 44%', width: stacked ? '100%' : undefined, padding: '0 clamp(24px,5vw,80px)', position: 'relative', zIndex: 2, height: stacked ? '48%' : '100%', display: 'flex', alignItems: 'center' }}>
           {works.map((w, i) => (
             <div key={i} style={{
               position: 'absolute', left: 'clamp(24px,5vw,80px)', right: 0,
@@ -671,6 +745,8 @@ const TestimonialsSection = ({ accentColor, accentGreen }) => {
   ];
   const [active, setActive] = React.useState(0);
   const accs = [accentColor, accentGreen, accentColor];
+  const vw = useViewportWidth();
+  const stacked = vw < 860;
 
   return (
     <section id="testimonials" data-screen-label="Testimonials" style={{ padding:'120px clamp(24px,5vw,80px)', borderTop:'1px solid var(--border)' }}>
@@ -681,7 +757,7 @@ const TestimonialsSection = ({ accentColor, accentGreen }) => {
         </div>
         <h2 className="reveal reveal-delay-1" style={{ fontFamily:'var(--ff-display)', fontWeight:800, fontSize:'clamp(32px,5vw,64px)', letterSpacing:'-0.02em', lineHeight:1, marginBottom:64 }}>What They Say</h2>
 
-        <div className="reveal reveal-delay-2" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:24 }}>
+        <div className="reveal reveal-delay-2" style={{ display:'grid', gridTemplateColumns: stacked ? '1fr' : 'repeat(3,1fr)', gap:24 }}>
           {testimonials.map((t, i) => (
             <div key={i}
               onClick={() => setActive(i)}
@@ -704,9 +780,12 @@ const ContactSection = ({ accentColor, accentGreen }) => {
   const [form, setForm] = React.useState({ name:'', email:'', service:'', message:'' });
   const [sent, setSent] = React.useState(false);
   const [error, setError] = React.useState(false);
+  const vw = useViewportWidth();
+  const stacked = vw < 900;
   const services = ['Software Development','Web & App Design','Data & Analytics','AI / Machine Learning','Cloud & Infrastructure','Cybersecurity','Consulting & Strategy'];
 
-  const inputStyle = { width:'100%', background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:4, padding:'14px 16px', color:'var(--text)', fontFamily:'var(--ff-body)', fontSize:14, outline:'none', transition:'border-color 0.2s' };
+  // font-size stays at 16px (not 14px) so mobile Safari doesn't auto-zoom on focus
+  const inputStyle = { width:'100%', background:'var(--bg-2)', border:'1px solid var(--border)', borderRadius:4, padding:'14px 16px', color:'var(--text)', fontFamily:'var(--ff-body)', fontSize:16, outline:'none', transition:'border-color 0.2s' };
 
   // Netlify Forms: a plain POST to "/" with the same fields it detected in
   // this form at deploy time is what routes submissions to the notification
@@ -728,7 +807,7 @@ const ContactSection = ({ accentColor, accentGreen }) => {
 
   return (
     <section id="contact" data-screen-label="Contact" style={{ padding:'120px clamp(24px,5vw,80px)', borderTop:'1px solid var(--border)', background:'var(--bg-1)' }}>
-      <div style={{ maxWidth:1200, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr', gap:80, alignItems:'start' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto', display:'grid', gridTemplateColumns: stacked ? '1fr' : '1fr 1fr', gap: stacked ? 48 : 80, alignItems:'start' }}>
         <div>
           <div className="reveal" style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
             <div style={{ width:24, height:1, background:accentColor }}/>
